@@ -47,7 +47,15 @@ def parse_article(article_name : str, offset : str = 0):
     return []
   crosslinks = get_crosslinks(s, article_name, offset)
   logger.info(f"Crosslinks found: {", ".join(crosslinks)}")
-  return crosslinks
+  tags = get_tags(s)
+  logger.info(f"Tags found: {", ".join(tags)}")
+  return crosslinks, tags
+
+def get_tags(s):
+  et = etree.HTML(str(s))
+  tag_links = et.xpath("//div[@class='page-tags']//a")
+  tags = [tag.text for tag in tag_links if not tag.text.startswith("_")]
+  return tags
 
 #function takes in article name (the last part of the url, e. g. 'scp-2311' or 'taboo'), and optionally an offset value
 def get_crosslinks(s : BeautifulSoup, article_name : str, offset : str = 0, visited_offsets=None) -> list[str]:
@@ -106,4 +114,4 @@ def get_crosslinks(s : BeautifulSoup, article_name : str, offset : str = 0, visi
   #at the end, we remove the duplicates
   return list(set(result))
 
-parse_article("djkaktus-s-proposal-iii")
+parse_article("scp-6500")
