@@ -1,22 +1,58 @@
 #extracting crosslinks from an article
 
+import logging
+import sys
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s]  %(message)s")
+
+fileHandler = logging.FileHandler("parsing.log", encoding="utf-8")
+fileHandler.setFormatter(logFormatter)
+logger.addHandler(fileHandler)
+
+consoleHandler = logging.StreamHandler(sys.stdout)
+consoleHandler.setFormatter(logFormatter)
+logger.addHandler(consoleHandler)
+
 import requests
 from bs4 import BeautifulSoup
 from lxml import etree
 
 from constants import CANONICAL_BASE_URL, ALTERNATE_BASE_URLS
 
-
-#function takes in article name (the last part of the url, e. g. 'scp-2311' or 'taboo'), and optionally an offset value
-def get_crosslinks(article_name : str, offset : str = 0) -> list[str]:
+def get_article(article_name : str, offset : str = 0):
   #build the url
-  
   url = CANONICAL_BASE_URL + article_name
   if offset != 0:
     url += f"/offset/{offset}"
   #fetch the page
-  r = requests.get(url)
+  try:
+    r = requests.get(url)
+    r.raise_for_status()
+  except requests.exceptions.HTTPError as err:
+    logger.error("Failed to fetch article {article_name}{", offset="+offset if offset != 0 else ""}, error: {err}")
+    raise err
+  logger.info(f"Succesfuly fetched article {article_name}{", offset="+offset if offset != 0 else ""}")
   s = BeautifulSoup(r.content, "html.parser")
+
+  return s
+
+def parse_article(article_name : str, offset : str = 0):
+  logger.info(f"Attempting parsing article {article_name}{", offset="+offset if offset != 0 else ""}")
+  try:
+    s = get_article(article_name, offset)
+  except requests.exceptions.HTTPError as err:
+    return []
+  crosslinks = get_crosslinks(s, article_name, offset)
+  logger.info(f"Crosslinks found: {", ".join(crosslinks)}")
+  return crosslinks
+
+#function takes in article name (the last part of the url, e. g. 'scp-2311' or 'taboo'), and optionally an offset value
+def get_crosslinks(s : BeautifulSoup, article_name : str, offset : str = 0, visited_offsets=None) -> list[str]:
+  
+  if visited_offsets is None: visited_offsets = ["0"]
   et = etree.HTML(str(s))
 
   #to find crosslinks, we look for <a> tags inside the page-content div
@@ -52,9 +88,10 @@ def get_crosslinks(article_name : str, offset : str = 0) -> list[str]:
     try:
       if levels[1] == "offset" and levels[0] == article_name:
         found_offset = levels[2]
-        if int(found_offset) > int(offset):
-          print(f"entering into offset {found_offset}")
-          result.extend(get_crosslinks(article_name, found_offset))
+        if found_offset not in visited_offsets:
+          visited_offsets.append(found_offset)
+          logger.info(f"Found an offset page, number {found_offset}; following")
+          result.extend(get_crosslinks(get_article(article_name, found_offset), article_name, found_offset, visited_offsets))
     except:
       pass
 
@@ -69,4 +106,4 @@ def get_crosslinks(article_name : str, offset : str = 0) -> list[str]:
   #at the end, we remove the duplicates
   return list(set(result))
 
-print(get_crosslinks("nagiros-proposal"))
+parse_article("djkaktus-s-proposal-iii")
