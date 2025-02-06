@@ -19,10 +19,14 @@ logger.addHandler(consoleHandler)
 import requests
 from bs4 import BeautifulSoup
 from lxml import etree
+import json
+import jsonlines
 
+from common import extract_article_name
 from constants import CANONICAL_BASE_URL, ALTERNATE_BASE_URLS
 
-def get_article(article_name : str, offset : str = 0):
+
+def get_article(article_name : str, offset : str = 0) -> BeautifulSoup:
   #build the url
   url = CANONICAL_BASE_URL + article_name
   if offset != 0:
@@ -32,7 +36,7 @@ def get_article(article_name : str, offset : str = 0):
     r = requests.get(url)
     r.raise_for_status()
   except requests.exceptions.HTTPError as err:
-    logger.error("Failed to fetch article {article_name}{", offset="+offset if offset != 0 else ""}, error: {err}")
+    logger.error(f"Failed to fetch article {article_name}{", offset="+offset if offset != 0 else ""}, error: {err}")
     raise err
   logger.info(f"Succesfuly fetched article {article_name}{", offset="+offset if offset != 0 else ""}")
   s = BeautifulSoup(r.content, "html.parser")
@@ -44,17 +48,36 @@ def parse_article(article_name : str, offset : str = 0):
   try:
     s = get_article(article_name, offset)
   except requests.exceptions.HTTPError as err:
-    return []
+    return [], [], 0
   crosslinks = get_crosslinks(s, article_name, offset)
-  logger.info(f"Crosslinks found: {", ".join(crosslinks)}")
   tags = get_tags(s)
-  logger.info(f"Tags found: {", ".join(tags)}")
-  return crosslinks, tags
+  rating = get_rating(s)
+  return crosslinks, tags, rating
+
+def get_rating(s):
+  et = etree.HTML(str(s))
+  rating_span = et.xpath("//span[contains(@class,'prw54353')]")
+  try:
+    rating = int(rating_span[0].text)
+    logger.info(f"Rating found: {rating}")
+  except IndexError:
+    logger.warning(f"Failed to find rating, setting to 0")
+    rating = 0
+  except ValueError:
+    logger.warning(f"Rating found, but not a valid number ({rating}), setting to 0")
+    rating = 0
+  return rating
+  
 
 def get_tags(s):
   et = etree.HTML(str(s))
-  tag_links = et.xpath("//div[@class='page-tags']//a")
+  tag_div = et.xpath("//div[@class='page-tags']")
+  if len(tag_div) != 1:
+    logger.warning("Failed to find the tag section")
+    return []
+  tag_links = tag_div[0].xpath(".//a")
   tags = [tag.text for tag in tag_links if not tag.text.startswith("_")]
+  logger.info(f"Tags found: {", ".join(tags)}")
   return tags
 
 #function takes in article name (the last part of the url, e. g. 'scp-2311' or 'taboo'), and optionally an offset value
@@ -74,15 +97,14 @@ def get_crosslinks(s : BeautifulSoup, article_name : str, offset : str = 0, visi
 
   for crosslink in crosslinks:
     target = crosslink.get("href")
-    internal = False
+
     #filter out the links that go outside the wiki
     #internal links can be relative (e. g. '/taboo') or absolute (e.g. 'https://scp-wiki.wikidot.com/scp-8190'))
-    for base in ALTERNATE_BASE_URLS:
-      if target.startswith(base):
-       target = target[len(base):]
-       internal = True
-       break
-    if not internal:
+    if target is None:
+      continue
+    try:
+      target = extract_article_name(target)
+    except ValueError:
       continue
 
     #this is for identifying offset pages
@@ -107,11 +129,39 @@ def get_crosslinks(s : BeautifulSoup, article_name : str, offset : str = 0, visi
     #that is, we want to treat a crosslink to scp-6500/offset/16 as simply a crosslink to scp-6500
     if "/offset/" in target:
       target = target[:target.find("/offset/")]
+    #likewise, remove parameters
+    #we do not want shit like scp-255?theme_url=/local--files/scp-255/noeffect.css
+    if "?" in target:
+      target = target[:target.find("?")]
+    #nor do we want task-forces#alpha-1
+    if "#" in target:
+      target = target[:target.find("#")]
     #do not include self-links
     if target == article_name:
       continue
     result.append(target)
   #at the end, we remove the duplicates
-  return list(set(result))
+  crosslinks = list(set(result))
+  logger.info(f"Crosslinks found: {", ".join(crosslinks)}")
+  return crosslinks
 
-parse_article("scp-6500")
+def parse_and_save_articles(input_path : str, output_path : str, starter : str = None):
+  with open(input_path, "r") as input_file:
+    articles_dict = json.load(input_file)
+  articles = [article for articles_list in articles_dict.values() for article in articles_list]
+  with jsonlines.open(output_path, "a") as writer:
+    for entry in articles:
+
+      if starter is not None and entry["name"] != starter:
+        continue
+      starter = None
+      
+      crosslinks, tags, rating = parse_article(entry["name"])
+      write_entry = {
+        "name" : entry["name"],
+        "authors" : entry["authors"],
+        "crosslinks" : crosslinks,
+        "tags" : tags,
+        "rating" : rating
+      }
+      writer.write(write_entry)
