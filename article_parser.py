@@ -1,20 +1,8 @@
 #extracting crosslinks from an article
 
-import logging
-import sys
+from common import get_logger
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s]  %(message)s")
-
-fileHandler = logging.FileHandler("parsing.log", encoding="utf-8")
-fileHandler.setFormatter(logFormatter)
-logger.addHandler(fileHandler)
-
-consoleHandler = logging.StreamHandler(sys.stdout)
-consoleHandler.setFormatter(logFormatter)
-logger.addHandler(consoleHandler)
+logger = get_logger("parsing.log")
 
 import requests
 from bs4 import BeautifulSoup
