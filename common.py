@@ -1,3 +1,17 @@
+import jsonlines
+
+def read_data(input_path : str) -> list[dict]:
+    result = []
+    with jsonlines.open(input_path) as reader:
+        for entry in reader:
+            result.append(entry)
+    return result
+
+def save_data(data : list[dict], output_path : str) -> None:
+    with jsonlines.open(output_path, mode="w") as writer:
+        for line in data:
+            writer.write(line)
+
 from constants import ALTERNATE_BASE_URLS
 
 def extract_article_name(url : str):
