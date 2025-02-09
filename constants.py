@@ -1,2 +1,4 @@
-ALTERNATE_BASE_URLS = ["/","https://scp-wiki.wikidot.com/", "http://www.scp-wiki.net/"]
-CANONICAL_BASE_URL = "https://scp-wiki.wikidot.com/"
+ALTERNATE_DOMAINS = ["/","scp-wiki.wikidot.com/", "www.scp-wiki.net/"]
+CANONICAL_DOMAIN = "scp-wiki.wikidot.com/"
+CANONICAL_PROTOCOL = "https://"
+ALTERNATE_PROTOCOLS = ["https://", "http://"]

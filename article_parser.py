@@ -11,12 +11,12 @@ import json
 import jsonlines
 
 from common import extract_article_name
-from constants import CANONICAL_BASE_URL, ALTERNATE_BASE_URLS
+from constants import CANONICAL_DOMAIN, ALTERNATE_DOMAINS, CANONICAL_PROTOCOL
 
 
 def get_article(article_name : str, offset : str = 0) -> BeautifulSoup:
   #build the url
-  url = CANONICAL_BASE_URL + article_name
+  url = CANONICAL_PROTOCOL + CANONICAL_DOMAIN + article_name
   if offset != 0:
     url += f"/offset/{offset}"
   #fetch the page
@@ -79,7 +79,16 @@ def get_crosslinks(s : BeautifulSoup, article_name : str, offset : str = 0, visi
   #like the ones on the nav bar or license info or link to an author page
   #so we need to filter those out
   #fortunately, we're going to preemptively limit the domain, so even if we let some, say, author pages slide through they won't be included in the graph anyway
-  crosslinks = et.xpath("//div[@id='page-content']//a[not(ancestor::div[@class='footer-wikiwalk-nav']) and not(ancestor::div[@class='licensebox']) and not(ancestor::div[@id='u-author_block']) and not(ancestor::div[@class='u-faq'])]")
+  crosslinks = et.xpath(r"""//div[@id='page-content']//a
+                        [not(ancestor::div[@class='footer-wikiwalk-nav'])
+                        and not(ancestor::div[@class='info-container'])
+                        and not(ancestor::ul[@class='creditRate']) 
+                        and not(ancestor::div[@class='licensebox']) 
+                        and not(ancestor::div[@id='u-author_block']) 
+                        and not(ancestor::div[@class='u-faq']) 
+                        and not(ancestor::div[@class='collapsible-block'][descendant::a[re:match(text(), '[Mm]ore\s([Ff]rom|[Bb]y)*')]])
+                        ]""",
+                        namespaces={"re": "http://exslt.org/regular-expressions"})
 
   result = []
 

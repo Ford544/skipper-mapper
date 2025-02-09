@@ -12,11 +12,15 @@ def save_data(data : list[dict], output_path : str) -> None:
         for line in data:
             writer.write(line)
 
-from constants import ALTERNATE_BASE_URLS
+from constants import ALTERNATE_DOMAINS, ALTERNATE_PROTOCOLS
 
 def extract_article_name(url : str):
     name = None
-    for base in ALTERNATE_BASE_URLS:
+    for protocol in ALTERNATE_PROTOCOLS:
+        if url.startswith(protocol):
+            url = url[len(protocol):]
+            break
+    for base in ALTERNATE_DOMAINS:
         if url.startswith(base):
             name = url[len(base):]
             break
