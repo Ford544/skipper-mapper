@@ -2,17 +2,31 @@
 
 from common import get_logger
 
-logger = get_logger("parsing.log")
+logger = get_logger("parsing_log", "parsing.log")
 
 import requests
 from bs4 import BeautifulSoup
 from lxml import etree
 import json
 import jsonlines
+import time
 
 from common import extract_article_name
 from constants import CANONICAL_DOMAIN, ALTERNATE_DOMAINS, CANONICAL_PROTOCOL
 
+def get_page(url, tries=5):
+  r = None
+  for i in range(tries):
+    try:
+      r = requests.get(url)
+      return r
+    except requests.exceptions.ChunkedEncodingError as err:
+      if i < tries - 1:
+        logger.warning(f"Connection error while fetching url {url}, retrying")
+        time.sleep(1)
+  raise err
+      
+  
 
 def get_article(article_name : str, offset : str = 0) -> BeautifulSoup:
   #build the url
@@ -20,10 +34,11 @@ def get_article(article_name : str, offset : str = 0) -> BeautifulSoup:
   if offset != 0:
     url += f"/offset/{offset}"
   #fetch the page
+  #retry on chunkedencodingerror?
   try:
-    r = requests.get(url)
+    r = get_page(url)
     r.raise_for_status()
-  except requests.exceptions.HTTPError as err:
+  except (requests.exceptions.HTTPError, requests.exceptions.ChunkedEncodingError, requests.exceptions.ConnectTimeout) as err:
     logger.error(f"Failed to fetch article {article_name}{", offset="+offset if offset != 0 else ""}, error: {err}")
     raise err
   logger.info(f"Succesfuly fetched article {article_name}{", offset="+offset if offset != 0 else ""}")
@@ -38,6 +53,7 @@ def parse_article(article_name : str, offset : str = 0):
   except requests.exceptions.HTTPError as err:
     return [], [], 0
   crosslinks = get_crosslinks(s, article_name, offset)
+  logger.info(f"Crosslinks found: {", ".join(crosslinks)}")
   tags = get_tags(s)
   rating = get_rating(s)
   return crosslinks, tags, rating
@@ -139,7 +155,6 @@ def get_crosslinks(s : BeautifulSoup, article_name : str, offset : str = 0, visi
     result.append(target)
   #at the end, we remove the duplicates
   crosslinks = list(set(result))
-  logger.info(f"Crosslinks found: {", ".join(crosslinks)}")
   return crosslinks
 
 def parse_and_save_articles(input_path : str, output_path : str, starter : str = None):

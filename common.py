@@ -30,8 +30,8 @@ def extract_article_name(url : str):
 import logging
 import sys
 
-def get_logger(filename : str) -> logging.Logger:
-    logger = logging.getLogger(__name__)
+def get_logger(name : str, filename : str) -> logging.Logger:
+    logger = logging.getLogger(name)
    
     if logger.hasHandlers():
         return logger

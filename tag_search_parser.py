@@ -16,7 +16,7 @@ class TagSearchParser:
   driver : webdriver.Chrome
 
   def __init__(self):
-    self.logger = get_logger("tag_search_parsing.log")
+    self.logger = get_logger("tag_search_log","tag_search_parsing.log")
     self.logger.info("Creating browser...")
     options = webdriver.ChromeOptions()
     options.add_argument('--headless=new')
@@ -67,6 +67,7 @@ class TagSearchParser:
       self.driver.execute_script("arguments[0].scrollIntoView()", tag_cancel_button)
       tag_cancel_button.click()
 
+#TODO wrong type hints
   def get_article_urls_for_tags(self, tags : list[str]) -> list[str]:
 
     self.apply_tags(tags)
