@@ -9,6 +9,7 @@ import json
 import logging
 
 from common import extract_article_name, get_logger
+from constants import ARTICLES_PATH
 
 class TagSearchParser:
 
@@ -109,7 +110,7 @@ class TagSearchParser:
     self.driver.quit()
     return result
 
-  def save_list_of_articles(self, tag_sets : list[list[str]], path : str):
+  def save_list_of_articles(self, tag_sets : list[list[str]], filename : str):
     response = self.query_tag_search(tag_sets)
-    with open(path, "w") as file:
+    with open(ARTICLES_PATH + filename, "w") as file:
       json.dump(response, file)

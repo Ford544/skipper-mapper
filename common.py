@@ -30,6 +30,8 @@ def extract_article_name(url : str):
 import logging
 import sys
 
+from constants import LOGS_PATH
+
 def get_logger(name : str, filename : str) -> logging.Logger:
     logger = logging.getLogger(name)
    
@@ -40,6 +42,7 @@ def get_logger(name : str, filename : str) -> logging.Logger:
 
     logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s]  %(message)s")
 
+    filename = LOGS_PATH + filename
     fileHandler = logging.FileHandler(filename, encoding="utf-8")
     fileHandler.setFormatter(logFormatter)
     logger.addHandler(fileHandler)

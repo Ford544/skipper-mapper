@@ -37,11 +37,11 @@ def fill_in_gaps(entries : list[dict]) -> list[dict]:
             result.append(entry)
     return result
 
-entries = read_data("data.jsonl")
-entries = fill_in_gaps(entries)
-entries = filter_by_tags(entries, exclude=["hub"])
-entries = filter_inner_links(entries)
-save_data(entries, "data_transformed.jsonl")
+#entries = read_data("data.jsonl")
+##entries = fill_in_gaps(entries)
+#entries = filter_by_tags(entries, exclude=["hub"])
+#entries = filter_inner_links(entries)
+#save_data(entries, "data_transformed.jsonl")
 
 import csv
 
@@ -54,4 +54,4 @@ def generate_cosmograph_csv(input_path : str, output_path : str):
             for crosslink in entry["crosslinks"]:
                 writer.writerow([entry["name"], crosslink])
 
-generate_cosmograph_csv("data_transformed.jsonl", "cosmodata.csv")
+#generate_cosmograph_csv("data_transformed.jsonl", "cosmodata.csv")
