@@ -130,6 +130,7 @@ def get_crosslinks(s : BeautifulSoup, article_name : str, offset : str = 0, visi
                         and not(ancestor::div[@class='licensebox']) 
                         and not(ancestor::div[@id='u-author_block']) 
                         and not(ancestor::div[@class='u-faq']) 
+                        and not(ancestor::div[contains(@class, 'earthworm')])
                         and not(ancestor::div[@class='collapsible-block'][descendant::a[re:match(text(), '[Mm]ore\s([Ff]rom|[Bb]y)*')]])
                         ]""",
                         namespaces={"re": "http://exslt.org/regular-expressions"})
